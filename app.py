@@ -5,6 +5,29 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 app = Flask(__name__)
 analyzer = SentimentIntensityAnalyzer()
 
+def tokenize(text):
+    stopwords = {"the", "and", "is", "at", "to", "a", "of", "in", "it", "for", "on", "this", "that", "with", "i"}
+    text = text.lower()
+    for char in text:
+        if not char.isalnum() and not char.isspace():
+            text = text.replace(char, "")
+    text = text.split()
+    for word in text:
+        if word in stopwords:
+            text.remove(word)
+    return text
+
+def extract_keywords(reviews):
+    freq = {}
+    for review in reviews:
+        words = tokenize(review)
+        for word in words:
+            if not word in freq:
+                freq[word] = 1
+            else:
+                freq[word] += 1
+    return sorted(freq.items(), key=lambda x: x[1], reverse=True)[:10]
+
 @app.route("/")
 def home():
     return render_template("upload.html")
