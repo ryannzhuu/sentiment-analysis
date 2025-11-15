@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from transformers import pipeline
+import re
 
 app = Flask(__name__)
 analyzer = SentimentIntensityAnalyzer()
@@ -17,17 +18,16 @@ def analyze_sentiment_transformer(text):
     score = float(result['score'])
     return label, score
 
-def tokenize(text):
+def tokenize(text: str) -> list[str]:
+    if not isinstance(text, str):
+        return []
+    
     stopwords = {"the", "and", "is", "at", "to", "a", "of", "in", "it", "for", "on", "this", "that", "with", "i"}
     text = text.lower()
-    for char in text:
-        if not char.isalnum() and not char.isspace():
-            text = text.replace(char, "")
-    text = text.split()
-    for word in text:
-        if word in stopwords:
-            text = [word for word in text if word not in stopwords]
-    return text
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+    words = text.split()
+    words = [word for word in words if word not in stopwords]
+    return words
 
 def extract_keywords(reviews):
     freq = {}
@@ -39,6 +39,9 @@ def extract_keywords(reviews):
             else:
                 freq[word] += 1
     return sorted(freq.items(), key=lambda x: x[1], reverse=True)[:10]
+
+def generate_summary(df):
+    
 
 @app.route("/")
 def home():
