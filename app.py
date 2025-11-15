@@ -41,7 +41,15 @@ def extract_keywords(reviews):
     return sorted(freq.items(), key=lambda x: x[1], reverse=True)[:10]
 
 def generate_summary(df):
-    
+    return {
+        "total_reviews": len(df),
+        "positive_percent": (df['vader_label'] == "Positive").mean() * 100,
+        "negative_percent": (df['vader_label'] == "Negative").mean() * 100,
+        "neutral_percent": (df['vader_label'] == "Neutral").mean() * 100,
+        "top_praise": extract_keywords(df[df['vader_label'] == "Positive"]['review'].tolist())[:3],
+        "top_complaints": extract_keywords(df[df['vader_label'] == "Negative"]['review'].tolist())[:3],
+        "overall_themes": extract_keywords(df['review'].tolist())
+    }
 
 @app.route("/")
 def home():
