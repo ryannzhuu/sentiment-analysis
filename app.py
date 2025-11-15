@@ -1,9 +1,21 @@
 from flask import Flask, render_template, request
 import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from transformers import pipeline
 
 app = Flask(__name__)
 analyzer = SentimentIntensityAnalyzer()
+
+sentiment_model = pipeline(
+    "sentiment-analysis",
+    model="LiYuan/amazon-review-sentiment-analysis"
+)
+
+def analyze_sentiment_transformer(text):
+    result = sentiment_model(text)[0]
+    label = result['label']
+    score = float(result['score'])
+    return label, score
 
 def tokenize(text):
     stopwords = {"the", "and", "is", "at", "to", "a", "of", "in", "it", "for", "on", "this", "that", "with", "i"}
@@ -14,7 +26,7 @@ def tokenize(text):
     text = text.split()
     for word in text:
         if word in stopwords:
-            text.remove(word)
+            text = [word for word in text if word not in stopwords]
     return text
 
 def extract_keywords(reviews):
@@ -36,20 +48,21 @@ def home():
 def analyze():
     file = request.files['file']
     df = pd.read_csv(file)
+    df['vader_score'] = df['review'].apply(lambda x: analyzer.polarity_scores(str(x))['compound'])
 
-    # Apply VADER sentiment scoring to each review
-    df['sentiment_score'] = df['review'].apply(lambda x: analyzer.polarity_scores(str(x))['compound'])
-
-    # Convert numeric score → label
-    def label(score):
+    def vader_label(score):
         if score >= 0.05:
             return "Positive"
         elif score <= -0.05:
             return "Negative"
         else:
             return "Neutral"
-
-    df['sentiment_label'] = df['sentiment_score'].apply(label)
+        
+    df['vader_label'] = df['vader_score'].apply(vader_label)
+    df['transformer_result'] = df['review'].apply(lambda x: analyze_sentiment_transformer(str(x)))
+    df['transformer_label'] = df['transformer_result'].apply(lambda x: x[0])
+    df['transformer_confidence'] = df['transformer_result'].apply(lambda x: x[1])
+    df = df.drop(columns=['transformer_result'])
 
     return df.to_html()
 
